@@ -82,6 +82,17 @@ public class TimeDuration implements Token {
         }
     }
 
+    public static Double convertNanosToUnit(Double nanos, String unit) {
+        switch (unit.toUpperCase()) {
+            case "MS":
+                return nanos / 1000000.0;
+            case "S":
+                return nanos / 1000000.0 / 1000.0;
+            default:
+                throw new IllegalArgumentException("Invalid unit: " + unit);
+        }
+    }
+
     @Override
     public Object value() {
         return value;

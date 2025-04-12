@@ -87,6 +87,21 @@ public class ByteSize implements Token {
         }
     }
 
+    public static Double convertByteToUnit(Double value, String unit) {
+        switch (unit.toUpperCase()) {
+            case "B":
+                return value;
+            case "KB":
+                return value / 1024.0;
+            case "MB":
+                return value / 1024.0 / 1024.0;
+            case "GB":
+                return value / 1024.0 / 1024.0 / 1024.0;
+            default:
+                throw new IllegalArgumentException("Invalid unit: " + unit);
+        }
+    }
+
     @Override
     public Object value() {
         return value;

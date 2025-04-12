@@ -1,0 +1,159 @@
+1. A short summary of this tool wrangler by data-integrations (github). What it does and its use case. Please explain it in easier terms.
+
+2. I have got an assignment to add some extra features in order to support Byte Units (kb,mb etc..) and Time Duration Units (millisec, sec)
+  It also requires to implement test units after (I don't have any prior experience with testing) -> I will deal with it later
+  I had already prepared a task list as mentioned in the assignment.
+  I may need help with the task list.
+
+3. I am writing down what I have done so far and what I understand or know at this point:
+
+  I have looked into the code base there are several modules like wrangler-api, wrangler-core (also mentioned in the assignment), wrangler-service etc..
+
+  Overall objective is to add support for parsing the byte units and time duration units
+
+  From what I have understand Its a data manipulation tool used for parsing the raw data and converting or applying some other filters on it.
+
+  It uses something called Directives (UDD) for adding new parsing features -> Got this from the readme file
+
+  On further looking I found It uses ANTLR4 for parsing (tokenizer or lexer)
+  I know about lexer and its related things as I know the basics of how language compiler works, I don't know if it has anything to do with this kind of thing
+
+4. Since ANTLR uses the directives.g4 file (looked on the internet its like a grammar for the parser, like what to parse, how the grammar is going to look like or something like that)
+   Since I have to add new directive to parse the Byte and Time Duration units, I have to add the types and rules in this grammar file (as mentioned in the assignment)
+
+5. What are fragments or to be precise lexer fragments
+
+6. alright, let me go trough the existing file to get a gist of what and how it looks
+
+7. I have looked into the file and done some modifications just by looking and taking reference from the previous code
+
+   Here's what I have modified:
+
+   First I have added the fragments as were suggested in the assignment like this:
+   fragment ByteUnit
+    : ('K'|'k') 'B'?
+    | ('M'|'m') 'B'?
+    | ('G'|'g') 'B'?
+    | 'B'
+    ;
+
+   fragment TimeUnit
+    : ('m' 's') | 's'
+    ;
+
+    Is this correct, should I share the complete code
+
+
+8. It compiled
+   I think task 1 is done at this point
+   Lets move to the Task 2
+
+9. I think the first two steps are easy, I just need to add class for these types/rules in order to convert them to java objects later
+
+10. What will be the input for the class
+    is it going to be the string value like "10Mb" or "2Sec"
+
+11. I can parse it by traversing and splitting but can I do this with regex
+
+12. I had implemented both classes and also added the types in the TokenType
+    But I am not sure what to do in the UsageDefinition and TokenDefinition it was mentioned in the task to modify them But I can't see anything in those classes than can be added or modified
+
+13. okay In tokedefinition i don't think i need to add something because that's a simple class
+
+14. I think I found the class it was located in the wrangler-core parser package
+    RecipeVisitor - It has similar method signatures as you were suggesting
+
+
+    I think I got some gist let me clear it up:
+    RecipeString (Raw Input) -> Lexer (Using Grammar File) -> Tokens -> Parser -> AST -> RecipeVisitor (Traverses on the AST) -> Java Objects -> TokenGroups
+
+    correct me If my analogy is wrong
+
+
+15. I have added this
+    now I know why we added visitByteSizeArg in the directives file
+
+16. wait In the assignment Its mentioned to write tests for these classes so now the time has come to learn how to write unit tests first let me give you the task we are skipping the task 3 for now
+
+17. just give me a rough idea and steps I will try to write the tests myself
+    Tests for these new tokens -> do I need to write them in the wrangler-api module or the wrangler-core module, I am a bit confused because the the tokens are in api-module but parsing is done in the core module
+
+18. Diff between Unit Test and the Parser Test
+
+19. Whats the meaning of all these how the input is going to look like and how the output is going to look like
+
+20. I think I got the gist of the task, I am going to write the tests myself
+
+21. help me to write test for the AggregateStats, I have implemented it but I don't know how to write the tests
+
+22. I am not sure how to make the result to be in single row, I have to look into it
+
+23. I have tried something like this but it resets the results and I don't know why
+     @Override
+     public List<Row> execute(List<Row> rows, ExecutorContext context)
+             throws DirectiveExecutionException, ErrorRowException, ReportErrorAndProceed {
+         for (Row row : rows) {
+
+             // For ByteSize
+             int idx = row.find(sizeSourceColumn);
+             if (idx != -1) {
+                 Object sizeValue = row.getValue(sizeSourceColumn);
+                 if (sizeValue instanceof ByteSize) {
+                     totalSizeInBytes += ((ByteSize) sizeValue).getBytes();
+                     sizeCount++;
+                 } else {
+                     throw new DirectiveExecutionException(
+                             "Invalid value " + sizeValue + " in column " + sizeSourceColumn
+                     );
+                 }
+             }
+
+             // For TimeDuration
+             idx = row.find(durationSourceColumn);
+             if (idx != -1) {
+                 Object durationValue = row.getValue(durationSourceColumn);
+                 if (durationValue instanceof TimeDuration) {
+                     totalDurationInNanos += ((TimeDuration) durationValue).getNanos();
+                     durationCount++;
+                 } else {
+                     throw new DirectiveExecutionException(
+                             "Invalid value " + durationValue + " in column " + durationSourceColumn
+                     );
+                 }
+             }
+         }
+
+         Row resultRow = new Row();
+         if (sizeCount > 0) {
+             double convertedSize = ByteSize.convertByteToUnit(totalSizeInBytes, outputSizeUnitType);
+             if (Objects.equals(aggregateType, "average")) {
+                 resultRow.addOrSet(targetTotalSizeColumn, convertedSize / sizeCount);
+             } else {
+                 resultRow.addOrSet(targetTotalSizeColumn, convertedSize);
+             }
+         }
+
+         if (durationCount > 0) {
+             double convertedDuration = TimeDuration.convertNanosToUnit(totalDurationInNanos, outputTimeUnitType);
+             if (Objects.equals(aggregateType, "average")) {
+                 resultRow.addOrSet(targetTotalDurationColumn, convertedDuration / durationCount);
+             } else {
+                 resultRow.addOrSet(targetTotalDurationColumn, convertedDuration);
+             }
+         }
+
+         return new ArrayList<Row>() {{ add(resultRow); }};
+     }
+
+
+23. I think I found something in the wrangler-core module its SetTransientVariable and it has similar thing that I was looking for
+    I am not sure how to use it but I think I will write the test myself
+
+24. What is the use of ExecutorContext in the wrangler-api module
+
+25. Please check the code and let me know if there is any other thing I need to do
+
+
+
+
+

@@ -83,6 +83,9 @@ public class TimeDuration implements Token {
     }
 
     public static Double convertNanosToUnit(Double nanos, String unit) {
+        if (nanos == 0) {
+            return 0.0;
+        }
         switch (unit.toUpperCase()) {
             case "NS":
                 return nanos;

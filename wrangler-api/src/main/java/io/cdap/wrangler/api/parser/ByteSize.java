@@ -88,6 +88,9 @@ public class ByteSize implements Token {
     }
 
     public static Double convertByteToUnit(Double value, String unit) {
+        if (value == 0) {
+            return 0.0;
+        }
         switch (unit.toUpperCase()) {
             case "B":
                 return value;

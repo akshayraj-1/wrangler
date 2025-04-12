@@ -31,6 +31,8 @@ More [here](wrangler-docs/upcoming-features.md) on upcoming features.
   * A new capability that allows CDAP Administrators to **restrict the directives** that are accessible to their users.
 More information on configuring can be found [here](wrangler-docs/exclusion-and-aliasing.md)
 
+  * **Byte Size and Time Durations** are now supported. Read more [here](wrangler-docs/directives/aggregate-stats.md)
+
 ## Demo Videos and Recipes
 
 Videos and Screencasts are best way to learn, so we have compiled simple, short screencasts that shows some of the features of Data Prep. Additional videos can be found [here](https://www.youtube.com/playlist?list=PLhmsf-NvXKJn-neqefOrcl4n7zU4TWmIr)

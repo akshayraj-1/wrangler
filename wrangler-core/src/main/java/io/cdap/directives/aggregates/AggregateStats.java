@@ -28,6 +28,8 @@ import io.cdap.wrangler.api.ExecutorContext;
 import io.cdap.wrangler.api.Optional;
 import io.cdap.wrangler.api.ReportErrorAndProceed;
 import io.cdap.wrangler.api.Row;
+import io.cdap.wrangler.api.TransientStore;
+import io.cdap.wrangler.api.TransientVariableScope;
 import io.cdap.wrangler.api.parser.ByteSize;
 import io.cdap.wrangler.api.parser.ColumnName;
 import io.cdap.wrangler.api.parser.Text;
@@ -35,9 +37,8 @@ import io.cdap.wrangler.api.parser.TimeDuration;
 import io.cdap.wrangler.api.parser.TokenType;
 import io.cdap.wrangler.api.parser.UsageDefinition;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 
 /**
@@ -58,10 +59,6 @@ public class AggregateStats implements Directive {
     private String outputTimeUnitType;
     private String aggregateType;
 
-    private double totalSizeInBytes = 0;
-    private double totalDurationInNanos = 0;
-    private int sizeCount = 0;
-    private int durationCount = 0;
 
     @Override
     public UsageDefinition define() {
@@ -70,9 +67,9 @@ public class AggregateStats implements Directive {
         builder.define("durationSourceColumn", TokenType.COLUMN_NAME);
         builder.define("targetTotalSizeColumn", TokenType.COLUMN_NAME);
         builder.define("targetTotalDurationColumn", TokenType.COLUMN_NAME);
+        builder.define("aggregateType", TokenType.TEXT, Optional.TRUE);
         builder.define("outputSizeUnitType", TokenType.TEXT, Optional.TRUE);
         builder.define("outputTimeUnitType", TokenType.TEXT, Optional.TRUE);
-        builder.define("aggregateType", TokenType.TEXT, Optional.TRUE);
         return builder.build();
     }
 
@@ -92,7 +89,7 @@ public class AggregateStats implements Directive {
         if (args.contains("outputTimeUnitType")) {
             this.outputTimeUnitType = ((Text) args.value("outputTimeUnitType")).value();
         } else {
-            this.outputTimeUnitType = "MS";
+            this.outputTimeUnitType = "NS";
         }
 
         if (args.contains("aggregateType")) {
@@ -105,11 +102,18 @@ public class AggregateStats implements Directive {
     @Override
     public List<Row> execute(List<Row> rows, ExecutorContext context)
             throws DirectiveExecutionException, ErrorRowException, ReportErrorAndProceed {
+
+        TransientStore store = context.getTransientStore();
+        double totalSizeInBytes = store.get("totalSizeInBytes");
+        double totalDurationInNanos = store.get("totalDurationInNanos");
+        int sizeCount = store.get("sizeCount");
+        int durationCount = store.get("durationCount");
+
+
         for (Row row : rows) {
 
             // For ByteSize
-            int idx = row.find(sizeSourceColumn);
-            if (idx != -1) {
+            if (row.find(sizeSourceColumn) != -1) {
                 Object sizeValue = row.getValue(sizeSourceColumn);
                 if (sizeValue instanceof ByteSize) {
                     totalSizeInBytes += ((ByteSize) sizeValue).getBytes();
@@ -122,8 +126,7 @@ public class AggregateStats implements Directive {
             }
 
             // For TimeDuration
-            idx = row.find(durationSourceColumn);
-            if (idx != -1) {
+            if (row.find(durationSourceColumn) != -1) {
                 Object durationValue = row.getValue(durationSourceColumn);
                 if (durationValue instanceof TimeDuration) {
                     totalDurationInNanos += ((TimeDuration) durationValue).getNanos();
@@ -136,27 +139,45 @@ public class AggregateStats implements Directive {
             }
         }
 
-        Row resultRow = new Row();
-        if (sizeCount > 0) {
-            double convertedSize = ByteSize.convertByteToUnit(totalSizeInBytes, outputSizeUnitType);
-            if (Objects.equals(aggregateType, "average")) {
-                resultRow.addOrSet(targetTotalSizeColumn, convertedSize / sizeCount);
+        store.set(TransientVariableScope.LOCAL, "totalSizeInBytes", totalSizeInBytes);
+        store.set(TransientVariableScope.LOCAL, "totalDurationInNanos", totalDurationInNanos);
+        store.set(TransientVariableScope.LOCAL, "sizeCount", sizeCount);
+        store.set(TransientVariableScope.LOCAL, "durationCount", durationCount);
+
+        int rowsCount = store.get("rowsCount");
+        if (rowsCount == sizeCount && rowsCount == durationCount) {
+
+            double outputSize;
+            double outputDuration;
+
+            // Calculating the required aggregate
+            if (aggregateType.equals("average")) {
+                outputSize = totalSizeInBytes / rowsCount;
+                outputDuration = totalDurationInNanos / rowsCount;
+            } else if (aggregateType.equals("total")) {
+                outputSize = totalSizeInBytes;
+                outputDuration = totalDurationInNanos;
             } else {
-                resultRow.addOrSet(targetTotalSizeColumn, convertedSize);
+                throw new DirectiveExecutionException("Invalid aggregateType: " + aggregateType);
             }
+
+            // Converting to output units
+            outputSize = ByteSize.convertByteToUnit(outputSize, outputSizeUnitType);
+            outputDuration = TimeDuration.convertNanosToUnit(outputDuration, outputTimeUnitType);
+
+            Row outputRow = new Row();
+            outputRow.add(targetTotalSizeColumn, outputSize);
+            outputRow.add(targetTotalDurationColumn, outputDuration);
+
+            store.reset(TransientVariableScope.GLOBAL);
+            store.reset(TransientVariableScope.LOCAL);
+
+            return Collections.singletonList(outputRow);
         }
 
-        if (durationCount > 0) {
-            double convertedDuration = TimeDuration.convertNanosToUnit(totalDurationInNanos, outputTimeUnitType);
-            if (Objects.equals(aggregateType, "average")) {
-                resultRow.addOrSet(targetTotalDurationColumn, convertedDuration / durationCount);
-            } else {
-                resultRow.addOrSet(targetTotalDurationColumn, convertedDuration);
-            }
-        }
-
-        return new ArrayList<Row>() {{ add(resultRow); }};
+        return Collections.emptyList();
     }
+
 
     @Override
     public void destroy() {

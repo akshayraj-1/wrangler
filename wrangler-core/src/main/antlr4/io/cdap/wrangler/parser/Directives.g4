@@ -64,6 +64,8 @@ directive
     | stringList
     | numberRanges
     | properties
+    | byteSizeArg
+    | timeDurationArg
   )*?
   ;
 
@@ -140,7 +142,7 @@ numberRange
  ;
 
 value
- : String | Number | Column | Bool
+ : String | Number | Column | Bool | ByteSize | TimeDuration
  ;
 
 ecommand
@@ -194,6 +196,14 @@ stringList
 identifierList
  : Identifier (',' Identifier)*
  ;
+
+byteSizeArg
+ : ByteSize
+ ;
+
+timeDurationArg
+ : TimeDuration
+ ; 
 
 
 /*
@@ -280,6 +290,14 @@ EscapeSequence
    |   OctalEscape
    ;
 
+ByteSize
+   : Number ByteUnit
+   ;
+
+TimeDuration
+   : Number TimeUnit
+   ;
+
 fragment
 OctalEscape
    :   '\\' ('0'..'3') ('0'..'7') ('0'..'7')
@@ -310,4 +328,15 @@ fragment Int
 
 fragment Digit
  : [0-9]
+ ;
+
+fragment ByteUnit
+ : ('K'|'k') 'B'
+ | ('M'|'m') 'B'
+ | ('G'|'g') 'B'
+ | 'B'
+ ;
+ 
+fragment TimeUnit
+ : ('m' 's') | 's'
  ;

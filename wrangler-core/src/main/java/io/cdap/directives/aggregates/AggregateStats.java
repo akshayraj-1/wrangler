@@ -13,8 +13,12 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 package io.cdap.directives.aggregates;
 
+import io.cdap.cdap.api.annotation.Description;
+import io.cdap.cdap.api.annotation.Name;
+import io.cdap.cdap.api.annotation.Plugin;
 import io.cdap.wrangler.api.Arguments;
 import io.cdap.wrangler.api.Directive;
 import io.cdap.wrangler.api.DirectiveExecutionException;
@@ -39,6 +43,9 @@ import java.util.Objects;
 /**
  * AggregateStats
  */
+@Plugin(type = Directive.TYPE)
+@Name(AggregateStats.NAME)
+@Description("AggregateStats - Aggregates byte size and time duration statistics from a list of rows")
 public class AggregateStats implements Directive {
 
     public static final String NAME = "aggregate-stats";
@@ -65,6 +72,7 @@ public class AggregateStats implements Directive {
         builder.define("targetTotalDurationColumn", TokenType.COLUMN_NAME);
         builder.define("outputSizeUnitType", TokenType.TEXT, Optional.TRUE);
         builder.define("outputTimeUnitType", TokenType.TEXT, Optional.TRUE);
+        builder.define("aggregateType", TokenType.TEXT, Optional.TRUE);
         return builder.build();
     }
 

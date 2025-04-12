@@ -71,12 +71,12 @@ public class TimeDuration implements Token {
      * @return nanos
      * @throws IllegalArgumentException if the unit is not "MS" or "S"
      */
-    public Long getNanos() {
+    public Double getNanos() {
         switch (unit) {
             case "MS":
-                return (long) (value * 1000000.0);
+                return value * 1000000.0;
             case "S":
-                return (long) (value * 1000000.0 * 1000.0);
+                return value * 1000000.0 * 1000.0;
             default:
                 throw new IllegalArgumentException("Invalid unit: " + unit);
         }
@@ -84,6 +84,8 @@ public class TimeDuration implements Token {
 
     public static Double convertNanosToUnit(Double nanos, String unit) {
         switch (unit.toUpperCase()) {
+            case "NS":
+                return nanos;
             case "MS":
                 return nanos / 1000000.0;
             case "S":

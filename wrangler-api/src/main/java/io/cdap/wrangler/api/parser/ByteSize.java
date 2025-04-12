@@ -72,16 +72,16 @@ public class ByteSize implements Token {
      * @return bytes
      * @throws IllegalArgumentException if the unit is not "B", "K", "M", or "G"
      */
-    public Long getBytes() {
+    public Double getBytes() {
         switch (unit) {
             case "B":
-                return value.longValue();
+                return value;
             case "KB":
-                return (long) (value * 1024.0);
+                return value * 1024.0;
             case "MB":
-                return (long) (value * 1024.0 * 1024.0);
+                return value * 1024.0 * 1024.0;
             case "GB":
-                return (long) (value * 1024.0 * 1024.0 * 1024.0);
+                return value * 1024.0 * 1024.0 * 1024.0;
             default:
                 throw new IllegalArgumentException("Invalid unit: " + unit);
         }

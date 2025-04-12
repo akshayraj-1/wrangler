@@ -21,9 +21,14 @@ import io.cdap.wrangler.api.CompileStatus;
 import io.cdap.wrangler.api.Compiler;
 import io.cdap.wrangler.api.Directive;
 import io.cdap.wrangler.api.RecipeParser;
+import io.cdap.wrangler.api.Row;
+import io.cdap.wrangler.api.parser.ByteSize;
+import io.cdap.wrangler.api.parser.TimeDuration;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -31,48 +36,91 @@ import java.util.List;
  */
 public class GrammarBasedParserTest {
 
-  @Test
-  public void testBasic() throws Exception {
-    String[] recipe = new String[] {
-      "#pragma version 2.0;",
-      "rename :col1 :col2",
-      "parse-as-csv :body ',' true;",
-      "#pragma load-directives text-reverse, text-exchange;",
-      "${macro} ${macro_2}",
-      "${macro_${test}}"
-    };
+    @Test
+    public void testBasic() throws Exception {
+        String[] recipe = new String[] {
+            "#pragma version 2.0;",
+            "rename :col1 :col2",
+            "parse-as-csv :body ',' true;",
+            "#pragma load-directives text-reverse, text-exchange;",
+            "${macro} ${macro_2}",
+            "${macro_${test}}"
+        };
 
-    RecipeParser parser = TestingRig.parse(recipe);
-    List<Directive> directives = parser.parse();
-    Assert.assertEquals(2, directives.size());
-  }
+        RecipeParser parser = TestingRig.parse(recipe);
+        List<Directive> directives = parser.parse();
+        Assert.assertEquals(2, directives.size());
+    }
 
-  @Test
-  public void testLoadableDirectives() throws Exception {
-    String[] recipe = new String[] {
-      "#pragma version 2.0;",
-      "#pragma load-directives text-reverse, text-exchange;",
-      "rename col1 col2",
-      "parse-as-csv body , true",
-      "text-reverse :body;",
-      "test prop: { a='b', b=1.0, c=true};",
-      "#pragma load-directives test-change,text-exchange, test1,test2,test3,test4;"
-    };
+    @Test
+    public void testLoadableDirectives() throws Exception {
+        String[] recipe = new String[] {
+            "#pragma version 2.0;",
+            "#pragma load-directives text-reverse, text-exchange;",
+            "rename col1 col2",
+            "parse-as-csv body , true",
+            "text-reverse :body;",
+            "test prop: { a='b', b=1.0, c=true};",
+            "#pragma load-directives test-change,text-exchange, test1,test2,test3,test4;"
+        };
 
-    Compiler compiler = new RecipeCompiler();
-    CompileStatus status = compiler.compile(new MigrateToV2(recipe).migrate());
-    Assert.assertEquals(7, status.getSymbols().getLoadableDirectives().size());
-  }
+        Compiler compiler = new RecipeCompiler();
+        CompileStatus status = compiler.compile(new MigrateToV2(recipe).migrate());
+        Assert.assertEquals(7, status.getSymbols().getLoadableDirectives().size());
+    }
 
-  @Test
-  public void testCommentOnlyRecipe() throws Exception {
-    String[] recipe = new String[] {
-      "// test"
-    };
+    @Test
+    public void testCommentOnlyRecipe() throws Exception {
+        String[] recipe = new String[] {
+                "// test"
+        };
 
-    RecipeParser parser = TestingRig.parse(recipe);
-    List<Directive> directives = parser.parse();
-    Assert.assertEquals(0, directives.size());
-  }
+        RecipeParser parser = TestingRig.parse(recipe);
+        List<Directive> directives = parser.parse();
+        Assert.assertEquals(0, directives.size());
+    }
+
+    @Test
+    public void testByteSizeRecipe() throws Exception {
+        String[] recipe = {
+                "set-column col1 '10Kb'",
+                "set-column col2 '2.5MB'",
+                "set-column col3 '1.5GB'"
+        };
+
+        Double[] expected = { 10.0 * 1024, 2.5 * 1024 * 1024, 1.5 * 1024 * 1024 * 1024 };
+
+        List<Row> rows = TestingRig.execute(recipe, Arrays.asList(new Row()));
+        Assert.assertEquals(1, rows.size());
+
+        Row row = rows.get(0);
+        for (int i = 0; i < expected.length; i++) {
+            ByteSize b = new ByteSize(row.getValue("col" + (i + 1)).toString());
+            Assert.assertEquals(expected[i], b.getBytes(), 0.0);
+        }
+    }
+
+
+    @Test
+    public void testTimeDurationRecipe() throws Exception {
+        String[] recipe = {
+                "set-column col1 '1s'",
+                "set-column col2 '1ms'",
+                "set-column col3 '2.1ms'",
+                "set-column col4 '2.1s'"
+        };
+
+        Double[] expected = { 1e9, 1e6, 2.1 * 1e6, 2.1 * 1e9 };
+
+        List<Row> rows = TestingRig.execute(recipe, Arrays.asList(new Row()));
+        Assert.assertEquals(1, rows.size());
+
+        Row row = rows.get(0);
+        for (int i = 0; i < expected.length; i++) {
+            TimeDuration t = new TimeDuration(row.getValue("col" + (i + 1)).toString());
+            Assert.assertEquals(expected[i], t.getNanos(), 0.0);
+        }
+    }
+
 
 }

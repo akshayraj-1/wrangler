@@ -234,6 +234,7 @@
                   <exclude>wrangler-demos/**</exclude>
                   <exclude>**/com/example/**</exclude>
                   <exclude>/**/icons/**</exclude>
+                  <exclude>prompts.txt</exclude>
                 </excludes>
               </configuration>
             </execution>

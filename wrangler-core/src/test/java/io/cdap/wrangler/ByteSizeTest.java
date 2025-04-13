@@ -28,7 +28,7 @@ public class ByteSizeTest {
 
     private final String[] byteSizes = { "10kb", "1MB", "2.5Mb", "3.5gb" };
     private final String[] invalidByteSizes = { "10k", "1", "2.5M", "3.5g" };
-    private final Long[] expected = { 10240L, 1048576L, 2621440L, 3758096384L };
+    private final Double[] expected = { 10240.0, 1048576.0, 2621440.0, 3758096384.0 };
 
     @Test
     public void testValidByteSize() {

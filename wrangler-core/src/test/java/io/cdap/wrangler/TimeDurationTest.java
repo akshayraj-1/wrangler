@@ -27,7 +27,7 @@ public class TimeDurationTest {
 
     private final String[] timeDurations = { "1.5ms", "1s", "2.1s" };
     private final String[] invalidTimeDurations = { "1.5", "1", "2.1" };
-    private final Long[] expected = { 1500000L, 1000000000L, 2100000000L };
+    private final Double[] expected = { 1500000.0, 1000000000.0, 2100000000.0 };
 
     @Test
     public void testValidTimeDuration() {
